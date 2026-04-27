@@ -8,37 +8,38 @@ MAX_VAL = 2
 SEED = 42
 
 
-def gather_replication_candidates(state: np.ndarray) -> list[set]:
+def gather_replication_candidates(state: np.ndarray, max_chain: int = 20) -> list[list]:
     size = len(state)
-    candidates = [set() for _ in range(size)]
+    candidates = [[] for _ in range(size)]
+    nonzero_positions = np.nonzero(state)[0]
 
-    for pos, current_val in enumerate(state):
-        if current_val == 0:
-            continue
+    for pos in nonzero_positions:
+        current_val = int(state[pos])
+        seen = set()
+        seen.add(current_val)
+        offsets = [current_val]
+        queue = [current_val]
+        hops = 0
 
-        offsets = {current_val}
-        offset_queue = [current_val]
-
-        while offset_queue:
-            check_offset = offset_queue.pop()
-            value_at_offset = state[(pos + check_offset) % size]
-            if value_at_offset not in offsets:
-                offsets.add(value_at_offset)
-                offset_queue.append(value_at_offset)
-            else:
-                break
+        while queue and hops < max_chain:
+            check_offset = queue.pop()
+            value_at_offset = int(state[(pos + check_offset) % size])
+            if value_at_offset != 0 and value_at_offset not in seen:
+                seen.add(value_at_offset)
+                offsets.append(value_at_offset)
+                queue.append(value_at_offset)
+            hops += 1
 
         for offset in offsets:
             new_pos = (pos + offset) % size
-            if offset != 0:
-                candidates[new_pos].add(int(current_val))
+            candidates[new_pos].append(current_val)
 
     return candidates
 
 
-def norm_zero(current_state: np.ndarray, collisions: list[set]) -> np.ndarray:
+def norm_zero(current_state: np.ndarray, collisions: list[list]) -> np.ndarray:
     return np.array([
-        list(vals)[0] if len(vals) == 1 else 0
+        vals[0] if len(vals) == 1 else 0
         for vals in collisions
     ])
 
